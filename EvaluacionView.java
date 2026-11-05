@@ -42,7 +42,7 @@ public class EvaluacionView extends JFrame {
 
     public EvaluacionView() {
         setTitle("Sistema MVC - Estimación de Desempeño de Clasificación");
-        setSize(950, 800);
+        setSize(950, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         initUI();
