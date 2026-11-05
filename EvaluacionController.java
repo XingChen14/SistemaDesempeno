@@ -15,6 +15,14 @@ public class EvaluacionController {
 
         view.addExaminarListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
+            // Cambia esta ruta por la que tú quieras:
+            fileChooser.setCurrentDirectory(new java.io.File("C:\\Users\\orimu\\Downloads\\Inteligencia artificial\\SistemaDesempeno\\Data"));
+            
+            // Filtro para mostrar solo archivos .csv 
+            javax.swing.filechooser.FileNameExtensionFilter filtroCsv = 
+                new javax.swing.filechooser.FileNameExtensionFilter("Archivos de texto CSV (*.csv)", "csv");
+            fileChooser.setFileFilter(filtroCsv);
+            
             if (fileChooser.showOpenDialog(view) == JFileChooser.APPROVE_OPTION) {
                 view.setRutaArchivo(fileChooser.getSelectedFile().getAbsolutePath());
             }
@@ -22,6 +30,7 @@ public class EvaluacionController {
 
         view.addExaminarCarpetaListener(e -> {
             JFileChooser dirChooser = new JFileChooser();
+            dirChooser.setCurrentDirectory(new java.io.File("C:\\Users\\orimu\\Downloads\\Inteligencia artificial\\SistemaDesempeno\\Resultados"));
             dirChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             if (dirChooser.showOpenDialog(view) == JFileChooser.APPROVE_OPTION) {
                 view.setCarpetaSalida(dirChooser.getSelectedFile().getAbsolutePath());
@@ -40,6 +49,11 @@ public class EvaluacionController {
         String clases = view.getClasesTexto();
         if (ruta.isEmpty() || clases.isEmpty()) {
             view.mostrarMensaje("Debe especificar la ruta del archivo CSV y las clases.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!ruta.toLowerCase().endsWith(".csv")) {
+            view.mostrarMensaje("El archivo seleccionado no es válido.\nPor favor, seleccione un archivo con extensión .csv", "Formato Incorrecto", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -92,11 +106,36 @@ public class EvaluacionController {
     private void ejecutarProcesamientoCompleto() {
         if (!datosCargados) return;
         try {
-            String carpetaDestino = view.getCarpetaSalida();
+            String carpetaBase = view.getCarpetaSalida();
             String nombreFinal = view.getNombreArchivoFinal();
-            
-            EvaluacionModel.ResultadosProcesamiento res = model.procesarCompleto(carpetaDestino, nombreFinal);
+            String rutaCsvOriginal = view.getRutaArchivo();
 
+            // 1. Extraer el nombre del archivo CSV sin la extensión .csv
+            java.io.File archivoCsv = new java.io.File(rutaCsvOriginal);
+            String nombreArchivoCsv = archivoCsv.getName();
+            int puntoIndex = nombreArchivoCsv.lastIndexOf('.');
+            if (puntoIndex > 0) {
+                nombreArchivoCsv = nombreArchivoCsv.substring(0, puntoIndex);
+            }
+
+            // 2. Construir el nombre base de la carpeta
+            String nombreBaseCarpeta = "Resultado_" + nombreArchivoCsv;
+            String nombreCarpetaDestino = nombreBaseCarpeta;
+            
+            // 3. Lógica para evitar sobreescribir: buscar el siguiente nombre disponible
+            java.io.File dirDestinoFinal = new java.io.File(carpetaBase, nombreCarpetaDestino);
+            int contador = 1;
+            while (dirDestinoFinal.exists()) {
+                // Si existe, probamos con "Resultado_nombre (1)", "Resultado_nombre (2)", etc.
+                nombreCarpetaDestino = nombreBaseCarpeta + " (" + contador + ")";
+                dirDestinoFinal = new java.io.File(carpetaBase, nombreCarpetaDestino);
+                contador++;
+            }
+
+            // 4. Llamar al modelo pasando la nueva ruta
+            EvaluacionModel.ResultadosProcesamiento res = model.procesarCompleto(dirDestinoFinal.getAbsolutePath(), nombreFinal);
+
+            // --- Mostrar resultados en la interfaz ---
             StringBuilder sbTexto = new StringBuilder();
             sbTexto.append("--- SUMAS Y MÉTRICAS POR CLASE ---\n");
             for (String clase : model.getListaClases()) {
@@ -112,7 +151,9 @@ public class EvaluacionController {
 
             view.mostrarResultadosFinales(res.matrizConf, model.getListaClases(), sbTexto.toString());
             
-            view.mostrarMensaje("Procesamiento completo finalizado.\nArchivos guardados en:\n" + carpetaDestino, "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            // Mensaje mostrando la nueva carpeta creada
+            view.mostrarMensaje("Procesamiento completo finalizado.\nArchivos guardados exitosamente en:\n" + dirDestinoFinal.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            
         } catch (Exception ex) {
             view.mostrarMensaje("Error en el procesamiento: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }

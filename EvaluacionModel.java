@@ -4,13 +4,17 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class EvaluacionModel {
-    
+    private List<RegistroDato> dataset = new ArrayList<>();
+    private List<String> clases = new ArrayList<>();
+    private int numClases;
+    private int currentIndex = 0;
+
+    // Clase interna para representar un registro
     public static class RegistroDato {
         public String id;
         public String claseVerdadera;
@@ -23,21 +27,41 @@ public class EvaluacionModel {
         }
     }
 
-    private List<RegistroDato> dataset;
-    private List<String> listaClases;
+    // Clase interna para los resultados
+    public static class ResultadosProcesamiento {
+        public int[][] matrizConf;
+        public Map<String, int[]> metricasClase; // [tp, fp, tn, fn]
+        public Map<String, double[]> metricasCalculadas; // [precision, recall, accuracy, fscore]
+        public double[] promediosGenerales; // [avgPrecision, avgRecall, avgAccuracy, avgFScore]
+
+        public ResultadosProcesamiento(int[][] matrizConf, Map<String, int[]> metricasClase, 
+                                       Map<String, double[]> metricasCalculadas, double[] promediosGenerales) {
+            this.matrizConf = matrizConf;
+            this.metricasClase = metricasClase;
+            this.metricasCalculadas = metricasCalculadas;
+            this.promediosGenerales = promediosGenerales;
+        }
+    }
 
     public EvaluacionModel() {
         this.dataset = new ArrayList<>();
-        this.listaClases = new ArrayList<>();
+        this.clases = new ArrayList<>();
     }
 
     public void cargarDataset(String rutaArchivo, String strClases) throws IOException {
-        listaClases = Arrays.asList(strClases.split(","));
-        for (int i = 0; i < listaClases.size(); i++) {
-            listaClases.set(i, listaClases.get(i).trim());
+        // Configurar clases
+        String[] arrClases = strClases.split(",");
+        clases.clear();
+        for (String c : arrClases) {
+            if (!c.trim().isEmpty()) {
+                clases.add(c.trim());
+            }
         }
+        this.numClases = clases.size();
 
         dataset.clear();
+        currentIndex = 0;
+        
         try (BufferedReader br = new BufferedReader(new FileReader(rutaArchivo))) {
             String linea;
             while ((linea = br.readLine()) != null) {
@@ -48,36 +72,35 @@ public class EvaluacionModel {
                 }
             }
         }
+        
         if (dataset.isEmpty()) {
             throw new IOException("El archivo CSV está vacío o no tiene el formato correcto.");
         }
     }
 
     public List<RegistroDato> getDataset() { return dataset; }
-    public List<String> getListaClases() { return listaClases; }
+    public List<String> getListaClases() { return clases; }
 
     public String evaluarRegistro(RegistroDato reg, String clase) {
-        if (reg.claseVerdadera.equals(clase) && reg.clasePrediccion.equals(clase)) {
-            return "TP";
-        } else if (!reg.claseVerdadera.equals(clase) && !reg.clasePrediccion.equals(clase)) {
-            return "TN";
-        } else if (!reg.claseVerdadera.equals(clase) && reg.clasePrediccion.equals(clase)) {
-            return "FP";
-        } else {
-            return "FN";
-        }
+        boolean realEsClase = reg.claseVerdadera.equals(clase);
+        boolean predEsClase = reg.clasePrediccion.equals(clase);
+
+        if (realEsClase && predEsClase) return "TP";
+        if (!realEsClase && !predEsClase) return "TN";
+        if (!realEsClase && predEsClase) return "FP";
+        return "FN"; // realEsClase && !predEsClase
     }
 
     public ResultadosProcesamiento procesarCompleto(String carpetaDestino, String nombreArchivoFinal) throws IOException {
-        int n = listaClases.size();
+        int n = clases.size();
         int[][] matrizConf = new int[n][n];
         Map<String, Integer> claseMap = new HashMap<>();
         for (int i = 0; i < n; i++) {
-            claseMap.put(listaClases.get(i), i);
+            claseMap.put(clases.get(i), i);
         }
 
         Map<String, List<String[]>> evaluacionesPorClase = new HashMap<>();
-        for (String c : listaClases) {
+        for (String c : clases) {
             evaluacionesPorClase.put(c, new ArrayList<>());
         }
 
@@ -88,30 +111,37 @@ public class EvaluacionModel {
                 matrizConf[vIdx][pIdx]++;
             }
 
-            for (String clase : listaClases) {
+            for (String clase : clases) {
                 String val = evaluarRegistro(reg, clase);
                 evaluacionesPorClase.get(clase).add(new String[]{reg.id, reg.claseVerdadera, reg.clasePrediccion, val});
             }
         }
 
+        // Calcular TP, FP, TN, FN
         Map<String, int[]> metricasClase = new HashMap<>();
         for (int i = 0; i < n; i++) {
-            String clase = listaClases.get(i);
+            String clase = clases.get(i);
             int tp = matrizConf[i][i];
-            int fp = 0;
-            for (int r = 0; r < n; r++) if (r != i) fp += matrizConf[r][i];
-            int fn = 0;
-            for (int c = 0; c < n; c++) if (c != i) fn += matrizConf[i][c];
-            int tn = dataset.size() - (tp + fp + fn);
+            int fp = 0, fn = 0, tn = 0;
+
+            for (int j = 0; j < n; j++) {
+                if (j != i) {
+                    fp += matrizConf[j][i]; // Columna
+                    fn += matrizConf[i][j]; // Fila
+                }
+            }
+            tn = dataset.size() - (tp + fp + fn);
             metricasClase.put(clase, new int[]{tp, fp, tn, fn});
         }
 
+        // Crear carpeta destino
         File dirDestino = new File(carpetaDestino);
         if (!dirDestino.exists()) {
             dirDestino.mkdirs();
         }
 
-        for (String clase : listaClases) {
+        // Escribir archivos por clase
+        for (String clase : clases) {
             int[] sumas = metricasClase.get(clase);
             File archivoClase = new File(dirDestino, "Evaluacion_Clase_" + clase + ".csv");
             try (FileWriter fw = new FileWriter(archivoClase)) {
@@ -128,6 +158,7 @@ public class EvaluacionModel {
             }
         }
 
+        // Calcular métricas y armar archivo final
         StringBuilder sbFinal = new StringBuilder();
         sbFinal.append("=== SUMAS DE TP, FP, TN, FN POR CLASE ===\n");
         sbFinal.append("Clase,TP,FP,TN,FN\n");
@@ -135,7 +166,7 @@ public class EvaluacionModel {
         double sumPrecision = 0, sumRecall = 0, sumAccuracy = 0, sumFScore = 0;
         Map<String, double[]> metricasCalculadas = new HashMap<>();
 
-        for (String clase : listaClases) {
+        for (String clase : clases) {
             int[] vals = metricasClase.get(clase);
             int tp = vals[0], fp = vals[1], tn = vals[2], fn = vals[3];
             sbFinal.append(clase).append(",").append(tp).append(",").append(fp).append(",").append(tn).append(",").append(fn).append("\n");
@@ -154,7 +185,7 @@ public class EvaluacionModel {
 
         sbFinal.append("\n=== METRICAS POR CLASE ===\n");
         sbFinal.append("Clase,Precision,Recall,Accuracy,F-Score\n");
-        for (String clase : listaClases) {
+        for (String clase : clases) {
             double[] m = metricasCalculadas.get(clase);
             sbFinal.append(String.format("%s,%.4f,%.4f,%.4f,%.4f\n", clase, m[0], m[1], m[2], m[3]));
         }
@@ -176,11 +207,12 @@ public class EvaluacionModel {
             fw.write(sbFinal.toString());
         }
 
+        // Escribir matriz de confusión
         File archivoMatriz = new File(dirDestino, "MatrizConfusion.csv");
         try (FileWriter fw = new FileWriter(archivoMatriz)) {
-            fw.write("ClaseVerdadera/Prediccion," + String.join(",", listaClases) + "\n");
+            fw.write("ClaseVerdadera/Prediccion," + String.join(",", clases) + "\n");
             for (int i = 0; i < n; i++) {
-                StringBuilder filaCsv = new StringBuilder(listaClases.get(i));
+                StringBuilder filaCsv = new StringBuilder(clases.get(i));
                 for (int j = 0; j < n; j++) {
                     filaCsv.append(",").append(matrizConf[i][j]);
                 }
@@ -188,21 +220,31 @@ public class EvaluacionModel {
             }
         }
 
-        return new ResultadosProcesamiento(matrizConf, metricasClase, metricasCalculadas, new double[]{avgPrecision, avgRecall, avgAccuracy, avgFScore});
+        return new ResultadosProcesamiento(matrizConf, metricasClase, metricasCalculadas, 
+                                          new double[]{avgPrecision, avgRecall, avgAccuracy, avgFScore});
     }
 
-    public static class ResultadosProcesamiento {
-        public int[][] matrizConf;
-        public Map<String, int[]> metricasClase;
-        public Map<String, double[]> metricasCalculadas;
-        public double[] promediosGenerales;
+    // Métodos para el modo paso a paso (Modo A)
+    public int getTotalRegistros() {
+        return dataset.size();
+    }
 
-        public ResultadosProcesamiento(int[][] matrizConf, Map<String, int[]> metricasClase, 
-                                       Map<String, double[]> metricasCalculadas, double[] promediosGenerales) {
-            this.matrizConf = matrizConf;
-            this.metricasClase = metricasClase;
-            this.metricasCalculadas = metricasCalculadas;
-            this.promediosGenerales = promediosGenerales;
+    public int getCurrentIndex() {
+        return currentIndex;
+    }
+
+    public void setCurrentIndex(int index) {
+        this.currentIndex = index;
+    }
+
+    public RegistroDato obtenerSiguienteDato() {
+        if (currentIndex < dataset.size()) {
+            return dataset.get(currentIndex++);
         }
+        return null;
+    }
+
+    public void reiniciarPasoAPaso() {
+        currentIndex = 0;
     }
 }

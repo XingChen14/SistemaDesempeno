@@ -102,7 +102,7 @@ public class EvaluacionView extends JFrame {
 
         gbcB.gridx = 0; gbcB.gridy = 0;
         panelTopB.add(new JLabel("Carpeta de Guardado:"), gbcB);
-        txtCarpetaSalida = new JTextField(System.getProperty("user.dir"), 20);
+        txtCarpetaSalida = new JTextField("C:\\Users\\orimu\\Downloads\\Inteligencia artificial\\SistemaDesempeno\\Resultados", 20);
         gbcB.gridx = 1; panelTopB.add(txtCarpetaSalida, gbcB);
         btnExaminarCarpeta = new JButton("Elegir Carpeta");
         gbcB.gridx = 2; panelTopB.add(btnExaminarCarpeta, gbcB);

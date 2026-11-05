@@ -52,7 +52,9 @@ ASEGURATE DE: Realizar varias pruebas a tu sistema con el ejemplo dado en clase.
 NOTA: NO PUEDES UTILIZAR LIBRERIAS QUE FACILITEN ESTIMAR CUALQUIERA DE LAS MÉTRICAS. DE SER ASI, ESTA PRÁCTICA SE CALIFICA CON 0.
 
 ===================================
-Entregable 1: El ejercicio anexo en documento se sube resuelto. Se entrega el jueves próximo - 29 de octubre
+
+Entregable 1: 
+El ejercicio anexo en documento se sube resuelto. Se entrega el jueves próximo - 29 de octubre
 
 
 Entregable 2: 
