@@ -132,8 +132,17 @@ public class EvaluacionController {
                 contador++;
             }
 
-            // 4. Llamar al modelo pasando la nueva ruta
-            EvaluacionModel.ResultadosProcesamiento res = model.procesarCompleto(dirDestinoFinal.getAbsolutePath(), nombreFinal);
+            // Obtenemos los nombres desde la vista
+            String nombreMatriz = view.getNombreMatriz();
+            String prefijoClases = view.getNombreClases();
+
+            // 4. Llamamos al modelo con los 4 parámetros
+            EvaluacionModel.ResultadosProcesamiento res = model.procesarCompleto(
+                dirDestinoFinal.getAbsolutePath(), 
+                nombreFinal, 
+                nombreMatriz, 
+                prefijoClases
+            );
 
             // --- Mostrar resultados en la interfaz ---
             StringBuilder sbTexto = new StringBuilder();

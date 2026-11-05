@@ -36,6 +36,8 @@ public class EvaluacionView extends JFrame {
     
     // Nuevos componentes para la carpeta de salida
     private JTextField txtCarpetaSalida;
+    private JTextField txtNombreMatriz; 
+    private JTextField txtNombreClases;
     private JButton btnExaminarCarpeta;
 
     public EvaluacionView() {
@@ -112,9 +114,20 @@ public class EvaluacionView extends JFrame {
         txtNombreArchivoFinal = new JTextField("ResultadosFinal.csv", 20);
         gbcB.gridx = 1; panelTopB.add(txtNombreArchivoFinal, gbcB);
 
+        gbcB.gridx = 2; gbcB.gridy = 1;
+        panelTopB.add(new JLabel("Nombre Matriz:"), gbcB);
+        txtNombreMatriz = new JTextField("MatrizConfusion.csv", 15);
+        gbcB.gridx = 3; panelTopB.add(txtNombreMatriz, gbcB);
+
+        gbcB.gridx = 0; gbcB.gridy = 2;
+        panelTopB.add(new JLabel("Prefijo Archivos por Clase:"), gbcB);
+        txtNombreClases = new JTextField("Evaluacion_Clase_", 15);
+        gbcB.gridx = 1; panelTopB.add(txtNombreClases, gbcB);
+
         btnProcesarTodo = new JButton("Procesar Dataset Completo");
         btnProcesarTodo.setEnabled(false);
-        gbcB.gridx = 2; panelTopB.add(btnProcesarTodo, gbcB);
+        gbcB.gridx = 2; gbcB.gridy = 2; gbcB.gridwidth = 2;
+        panelTopB.add(btnProcesarTodo, gbcB);
 
         panelModoB.add(panelTopB, BorderLayout.NORTH);
 
@@ -151,10 +164,12 @@ public class EvaluacionView extends JFrame {
     public String getRutaArchivo() { return txtArchivoCSV.getText().trim(); }
     public String getClasesTexto() { return txtClases.getText().trim(); }
     public String getNombreArchivoFinal() { return txtNombreArchivoFinal.getText().trim(); }
+    
     public String getCarpetaSalida() { return txtCarpetaSalida.getText().trim(); }
     public void setRutaArchivo(String ruta) { txtArchivoCSV.setText(ruta); }
     public void setCarpetaSalida(String ruta) { txtCarpetaSalida.setText(ruta); }
-    
+    public String getNombreMatriz() { return txtNombreMatriz.getText().trim(); }
+    public String getNombreClases() { return txtNombreClases.getText().trim(); }  
     public void appendModoA(String texto) { txtAreaModoA.append(texto); }
     public void setModoAText(String texto) { txtAreaModoA.setText(texto); }
 

@@ -91,7 +91,8 @@ public class EvaluacionModel {
         return "FN"; // realEsClase && !predEsClase
     }
 
-    public ResultadosProcesamiento procesarCompleto(String carpetaDestino, String nombreArchivoFinal) throws IOException {
+    public ResultadosProcesamiento procesarCompleto(String carpetaDestino, String nombreArchivoFinal,
+                                                    String nombreMatriz, String prefijoClases) throws IOException {
         int n = clases.size();
         int[][] matrizConf = new int[n][n];
         Map<String, Integer> claseMap = new HashMap<>();
@@ -143,7 +144,7 @@ public class EvaluacionModel {
         // Escribir archivos por clase
         for (String clase : clases) {
             int[] sumas = metricasClase.get(clase);
-            File archivoClase = new File(dirDestino, "Evaluacion_Clase_" + clase + ".csv");
+            File archivoClase = new File(dirDestino, prefijoClases + clase + ".csv");
             try (FileWriter fw = new FileWriter(archivoClase)) {
                 fw.write("=== EVALUACION PARA LA CLASE " + clase + " ===\n");
                 fw.write("ID Dato de prueba,Clase Verdadera,Clase Prediccion,Evaluacion (TP/TN/FP/FN)\n");
@@ -208,7 +209,10 @@ public class EvaluacionModel {
         }
 
         // Escribir matriz de confusión
-        File archivoMatriz = new File(dirDestino, "MatrizConfusion.csv");
+        if (nombreMatriz == null || nombreMatriz.trim().isEmpty()) {
+            nombreMatriz = "MatrizConfusion.csv";
+        }
+        File archivoMatriz = new File(dirDestino, nombreMatriz);
         try (FileWriter fw = new FileWriter(archivoMatriz)) {
             fw.write("ClaseVerdadera/Prediccion," + String.join(",", clases) + "\n");
             for (int i = 0; i < n; i++) {
